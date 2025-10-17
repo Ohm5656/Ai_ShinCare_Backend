@@ -28,3 +28,4 @@ onnxruntime
 
 # === Utils ===
 requests
+email-validator
