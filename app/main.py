@@ -28,17 +28,19 @@ app.add_middleware(
 def root():
     return {"message": "AI Skin Analyzer Backend is running!"}
 
-
 # ======================================
-# ถ้ามี router อื่น (auth, analyze, ฯลฯ)
+# โหลด routers
 # ======================================
 try:
     from app.routers import auth, users, scans, analyze, chat
 
+    # ✅ รวม router เข้ากับ app หลัก
     app.include_router(auth.router, prefix="/auth", tags=["Auth"])
     app.include_router(users.router, prefix="/users", tags=["Users"])
     app.include_router(scans.router, prefix="/scans", tags=["Scans"])
     app.include_router(analyze.router, prefix="/analyze", tags=["Analyze"])
     app.include_router(chat.router, prefix="/chat", tags=["Chat"])
+
+    print("✅ Routers loaded successfully.")
 except Exception as e:
     print("⚠️ Warning: Some routers not loaded yet ->", e)
