@@ -1,29 +1,44 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
-from uuid import uuid4
+from app import schemas, models, utils
+from app.database import get_db
+from jose import JWTError, jwt
+from datetime import datetime, timedelta
+import os
 
-from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse
-from app.core.security import hash_password, verify_password, create_access_token
-from app.core.deps import db_session
-from app.db.models import User, Profile
+router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-router = APIRouter()
+SECRET_KEY = os.getenv("SECRET_KEY", "secret-key-placeholder")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 1 day
 
-@router.post("/register", response_model=TokenResponse)
-def register(data: RegisterRequest, db: Session = Depends(db_session)):
-    if db.query(User).filter(User.email==data.email).first():
-        raise HTTPException(400, "Email already registered")
-    user = User(id=str(uuid4()), email=data.email, password_hash=hash_password(data.password))
-    db.add(user)
-    db.add(Profile(user_id=user.id))
+
+def create_access_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+@router.post("/register", response_model=schemas.UserResponse)
+def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    existing = db.query(models.User).filter(models.User.email == user.email).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    hashed_pw = utils.hash_password(user.password)
+    new_user = models.User(username=user.username, email=user.email, password=hashed_pw)
+    db.add(new_user)
     db.commit()
-    token = create_access_token(str(user.id))
-    return TokenResponse(access_token=token)
+    db.refresh(new_user)
+    return new_user
 
-@router.post("/login", response_model=TokenResponse)
-def login(data: LoginRequest, db: Session = Depends(db_session)):
-    user = db.query(User).filter(User.email==data.email).first()
-    if not user or not user.password_hash or not verify_password(data.password, user.password_hash):
-        raise HTTPException(401, "Invalid credentials")
-    token = create_access_token(str(user.id))
-    return TokenResponse(access_token=token)
+
+@router.post("/login")
+def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
+    db_user = db.query(models.User).filter(models.User.email == user.email).first()
+    if not db_user or not utils.verify_password(user.password, db_user.password):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    token = create_access_token({"sub": str(db_user.id)})
+    return {"access_token": token, "token_type": "bearer"}
