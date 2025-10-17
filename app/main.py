@@ -11,36 +11,29 @@ app = FastAPI(
 )
 
 # ======================================
-# ตั้งค่า CORS (อนุญาตให้ frontend เรียก)
+# ตั้งค่า CORS
 # ======================================
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # ตอนทดสอบอนุญาตทุก origin
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # ======================================
-# ตัวอย่าง endpoint ทดสอบระบบ
+# Root ทดสอบระบบ
 # ======================================
 @app.get("/")
 def root():
     return {"message": "AI Skin Analyzer Backend is running!"}
 
 # ======================================
-# โหลด routers
+# โหลด router auth เท่านั้นก่อน
 # ======================================
 try:
-    from app.routers import auth, users, scans, analyze, chat
-
-    # ✅ รวม router เข้ากับ app หลัก
+    from app.routers import auth
     app.include_router(auth.router, prefix="/auth", tags=["Auth"])
-    app.include_router(users.router, prefix="/users", tags=["Users"])
-    app.include_router(scans.router, prefix="/scans", tags=["Scans"])
-    app.include_router(analyze.router, prefix="/analyze", tags=["Analyze"])
-    app.include_router(chat.router, prefix="/chat", tags=["Chat"])
-
-    print("✅ Routers loaded successfully.")
+    print("✅ Router 'auth' loaded successfully.")
 except Exception as e:
-    print("⚠️ Warning: Some routers not loaded yet ->", e)
+    print("⚠️ Warning: Auth router not loaded ->", e)
