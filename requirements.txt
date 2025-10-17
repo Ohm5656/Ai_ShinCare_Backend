@@ -1,21 +1,30 @@
+# === Core Framework ===
 fastapi
 uvicorn[standard]
 python-multipart
 pydantic
 pydantic-settings
 
+# === Database ===
 SQLAlchemy
 psycopg2-binary
 alembic
 
+# === Authentication & Security ===
 passlib[bcrypt]
 python-jose[cryptography]
 bcrypt
+python-dotenv
 
+# === Logging / Rate limit ===
 loguru
 slowapi
 
+# === AI / CV dependencies ===
 opencv-python
 numpy
 insightface
 onnxruntime
+
+# === Utils ===
+requests
