@@ -4,7 +4,8 @@ from insightface.app import FaceAnalysis
 import cv2, numpy as np
 from app.services.face_pose import infer_pose_from_image, classify_pose
 
-router = APIRouter(prefix="/analyze", tags=["Analyze"])
+router = APIRouter(tags=["Analyze"])
+
 
 # ===================================================
 # โหลดโมเดล InsightFace สำหรับตรวจจับใบหน้า
