@@ -21,15 +21,11 @@ loguru
 slowapi
 
 # === AI / CV dependencies ===
-opencv-python
+opencv-python-headless==4.10.0.84
 numpy
+onnxruntime==1.17.3
 insightface==0.7.3
-onnxruntime
 
 # === Utils ===
 requests
 email-validator
-# === System / AI backend dependencies ===
-scipy
-pandas
-protobuf<4.0.0

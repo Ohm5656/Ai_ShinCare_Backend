@@ -13,10 +13,8 @@ MODEL_PATH = os.getenv("FACE_POSE_ONNX", "models/mb1_120x120.onnx")
 CSV_FILE = "pose_calibration.csv"
 
 # โหลด InsightFace สำหรับตรวจจับใบหน้า
-face_app = FaceAnalysis(name="buffalo_l")
-face_app.prepare(ctx_id=0, det_size=(640, 640), providers=["CPUExecutionProvider"])
-
-
+face_app = FaceAnalysis(name="buffalo_l", providers=["CPUExecutionProvider"])
+face_app.prepare(ctx_id=0, det_size=(640, 640))
 # ============================================
 # โหลดโมเดล ONNX
 # ============================================
