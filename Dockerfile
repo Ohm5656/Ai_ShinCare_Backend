@@ -17,12 +17,13 @@ COPY requirements.txt .
 # 4) Install system dependencies
 # =========================================================
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential g++ make \
     libgl1 libglib2.0-0 libsm6 libxrender1 libxext6 tzdata \
     && ln -snf /usr/share/zoneinfo/Asia/Bangkok /etc/localtime && echo Asia/Bangkok > /etc/timezone \
     && rm -rf /var/lib/apt/lists/*
 
 # =========================================================
-# 5) Install Python dependencies (force clean)
+# 5) Install Python dependencies
 # =========================================================
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir --force-reinstall -r requirements.txt
