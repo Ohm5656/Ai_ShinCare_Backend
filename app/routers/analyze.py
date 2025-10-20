@@ -59,9 +59,18 @@ async def analyze_pose(file: UploadFile = File(...)):
 
         # ตรวจจับใบหน้า
         faces = face_app.get(img)
-        if not faces:
-            return {"pose": "none"}
+        face_ok = len(faces) > 0
 
+        # วัดความสว่าง
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        brightness = np.mean(gray)
+        light_ok = brightness > 60  # กำหนด threshold แสง
+
+        if not face_ok:
+            print(f"[DEBUG] No face detected | brightness={brightness:.1f}")
+            return {"pose": "none", "face_ok": False, "light_ok": light_ok}
+
+        # ถ้ามีใบหน้า
         face = max(faces, key=lambda x: x.det_score)
         x1, y1, x2, y2 = map(int, face.bbox)
         face_crop = img[y1:y2, x1:x2]
@@ -70,14 +79,21 @@ async def analyze_pose(file: UploadFile = File(...)):
         pose_data = infer_pose_from_image(face_crop)
         pose_label = classify_pose(pose_data["yaw"], pose_data["pitch"])
 
-        print(f"[DEBUG] Pose={pose_label}, yaw={pose_data['yaw']:.2f}, pitch={pose_data['pitch']:.2f}")
-        return {"pose": pose_label}
+        print(f"[DEBUG] Pose=({pose_label}), yaw={pose_data['yaw']:.2f}, pitch={pose_data['pitch']:.2f}, "
+              f"brightness={brightness:.1f}, faces={len(faces)}")
+
+        return {
+            "pose": pose_label,
+            "face_ok": True,
+            "light_ok": light_ok,
+            "yaw": pose_data["yaw"],
+            "pitch": pose_data["pitch"],
+        }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         await file.close()
-
 
 # ===================================================
 # ✅ วิเคราะห์ “ผิวหน้า” จากภาพทั้ง 3 มุม
