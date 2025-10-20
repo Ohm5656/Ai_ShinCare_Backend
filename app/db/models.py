@@ -6,6 +6,7 @@ from datetime import datetime
 
 from app.db.base import Base
 
+
 # helper: UUID column ที่ใช้ได้กับ SQLite/PG (เก็บเป็น TEXT ใน SQLite)
 def UUID_col():
     try:
@@ -13,14 +14,20 @@ def UUID_col():
     except Exception:
         return Column(String, primary_key=True, default=lambda: str(uuid4()))
 
+
 def UUID_fk():
     try:
         return Column(UUID(as_uuid=True), ForeignKey("users.id"))
     except Exception:
         return Column(String, ForeignKey("users.id"))
 
+
+# ============================================================
+# USER MODEL
+# ============================================================
 class User(Base):
     __tablename__ = "users"
+
     id = UUID_col()
     email = Column(String, unique=True, nullable=False)
     password_hash = Column(String, nullable=True)
@@ -32,9 +39,20 @@ class User(Base):
     profile = relationship("Profile", back_populates="user", uselist=False, cascade="all,delete")
     scans = relationship("Scan", back_populates="user", cascade="all,delete")
 
+
+# ============================================================
+# PROFILE MODEL
+# ============================================================
 class Profile(Base):
     __tablename__ = "profiles"
-    user_id = UUID_fk()
+
+    # ✅ ใช้ user_id เป็น primary key (เพราะ one-to-one กับ User)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id"),
+        primary_key=True
+    )
+
     display_name = Column(String)
     gender = Column(String)  # male/female/other
     age = Column(Integer)
@@ -43,10 +61,14 @@ class Profile(Base):
     avatar_url = Column(Text)
 
     user = relationship("User", back_populates="profile")
-    __table_args__ = ({'sqlite_autoincrement': True},)
 
+
+# ============================================================
+# SCAN MODEL
+# ============================================================
 class Scan(Base):
     __tablename__ = "scans"
+
     id = UUID_col()
     user_id = UUID_fk()
     created_at = Column(DateTime, default=datetime.utcnow)
