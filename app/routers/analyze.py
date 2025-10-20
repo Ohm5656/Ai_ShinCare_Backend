@@ -2,30 +2,21 @@ from fastapi import APIRouter, File, UploadFile, HTTPException
 from insightface.app import FaceAnalysis
 import cv2, numpy as np, math, os
 
+# 🔹 Import service 3DDFA_V2 ที่โอห์มสร้างไว้
+from app.services.face_pose import infer_pose_from_image, classify_pose
+
 router = APIRouter(prefix="/analyze", tags=["Analyze"])
 
 # ======================================
-# โหลดโมเดล InsightFace
+# โหลดโมเดล InsightFace (สำหรับตรวจจับใบหน้า)
 # ======================================
 app_insight = FaceAnalysis(name="buffalo_l", providers=["CPUExecutionProvider"])
 app_insight.prepare(ctx_id=0, det_size=(640, 640))
 
 
 # ======================================
-# ฟังก์ชันย่อย
+# ฟังก์ชันย่อย (วิเคราะห์ผิว)
 # ======================================
-def estimate_yaw(face):
-    """คำนวณมุม Yaw จาก landmark ดวงตา"""
-    lmk = getattr(face, "landmark_2d_106", None)
-    if lmk is None:
-        return 0
-    left_eye = np.mean(lmk[33:42], axis=0)
-    right_eye = np.mean(lmk[42:51], axis=0)
-    dx = right_eye[0] - left_eye[0]
-    dy = right_eye[1] - left_eye[1]
-    return -math.degrees(math.atan2(dy, dx))  # mirror fix
-
-
 def analyze_skin(face_crop):
     """วิเคราะห์พารามิเตอร์ผิวหน้า 6 ด้าน"""
     gray = cv2.cvtColor(face_crop, cv2.COLOR_BGR2GRAY)
@@ -104,12 +95,12 @@ def describe_skin(name, score):
 
 
 # ======================================
-# Endpoint วิเคราะห์ผิวหน้า
+# Endpoint วิเคราะห์ผิว + มุมใบหน้า
 # ======================================
 @router.post("/skin")
 async def analyze_skin_api(file: UploadFile = File(...)):
     """
-    📷 รับภาพใบหน้า → ตรวจจับใบหน้า → วิเคราะห์ผิว 6 ด้าน
+    📷 รับภาพใบหน้า → ตรวจจับใบหน้า → วิเคราะห์ผิว + มุมใบหน้า (3DDFA_V2)
     """
     try:
         # อ่านข้อมูลภาพ
@@ -120,6 +111,9 @@ async def analyze_skin_api(file: UploadFile = File(...)):
         if img is None:
             raise HTTPException(status_code=400, detail="ไม่สามารถอ่านภาพได้")
 
+        # ----------------------------------------
+        # 🔹 ตรวจจับใบหน้าด้วย InsightFace
+        # ----------------------------------------
         faces = app_insight.get(img)
         if not faces:
             return {"ok": False, "message": "ไม่พบใบหน้าในภาพ"}
@@ -129,10 +123,19 @@ async def analyze_skin_api(file: UploadFile = File(...)):
         x1, y1, x2, y2 = map(int, face.bbox)
         face_crop = img[y1:y2, x1:x2]
 
-        yaw, pitch, roll = face.pose
+        # ----------------------------------------
+        # 🔹 วิเคราะห์ผิว (6 พารามิเตอร์)
+        # ----------------------------------------
         results = analyze_skin(face_crop)
         descriptions = {k: describe_skin(k, v) for k, v in results.items()}
 
+        # ----------------------------------------
+        # 🔹 วิเคราะห์มุมใบหน้าด้วย 3DDFA_V2 (ONNX)
+        # ----------------------------------------
+        pose_data = infer_pose_from_image(face_crop)
+        pose_label = pose_data.get("label", "unknown")
+
+        # รวมผลลัพธ์ทั้งหมด
         summary_text = (
             "สรุปผลเบื้องต้น: ผิวโดยรวมอยู่ในเกณฑ์ดี "
             "ควรรักษาความชุ่มชื้นและทาครีมกันแดดสม่ำเสมอ"
@@ -140,7 +143,12 @@ async def analyze_skin_api(file: UploadFile = File(...)):
 
         return {
             "ok": True,
-            "pose": {"yaw": yaw, "pitch": pitch, "roll": roll},
+            "pose": {
+                "yaw": pose_data["yaw"],
+                "pitch": pose_data["pitch"],
+                "roll": pose_data["roll"],
+                "label": pose_label
+            },
             "results": results,
             "descriptions": descriptions,
             "summary": summary_text,

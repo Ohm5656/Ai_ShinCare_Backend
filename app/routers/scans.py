@@ -6,6 +6,7 @@ from app.core.deps import db_session, get_current_user
 from app.db.models import Scan
 from app.services.smoother import ema
 
+
 router = APIRouter()
 
 @router.get("/summary")
@@ -35,3 +36,29 @@ def list_scans(page: int = 1, page_size: int = 10, db: Session = Depends(db_sess
         "summary": r.summary
     } for r in items]
     return {"total": total, "page": page, "page_size": page_size, "items": data}
+
+from fastapi import APIRouter, UploadFile, File
+from app.services.face_pose import detect_pose_from_bytes
+from app.services.analyzer import analyze_faces_from_files
+
+router = APIRouter(prefix="/scan", tags=["Scan"])
+
+# -----------------------------
+# ตรวจมุมใบหน้าจากภาพเดียว
+# -----------------------------
+@router.post("/pose")
+async def check_pose(file: UploadFile = File(...)):
+    img_bytes = await file.read()
+    result = detect_pose_from_bytes(img_bytes)
+    return result
+
+
+# -----------------------------
+# วิเคราะห์ใบหน้าครบ 3 มุม
+# -----------------------------
+@router.post("/analyze")
+async def analyze_face(files: list[UploadFile] = File(...)):
+    file_bytes = [await f.read() for f in files]
+    result = analyze_faces_from_files(file_bytes)
+    return result
+

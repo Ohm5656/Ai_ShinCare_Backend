@@ -29,3 +29,7 @@ onnxruntime
 # === Utils ===
 requests
 email-validator
+# === System / AI backend dependencies ===
+scipy
+pandas
+protobuf<4.0.0
