@@ -61,14 +61,19 @@ async def analyze_pose(file: UploadFile = File(...)):
         faces = face_app.get(img)
         face_ok = len(faces) > 0
 
-        # วัดความสว่าง
+        # ตรวจแสง
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        brightness = np.mean(gray)
-        light_ok = brightness > 60  # กำหนด threshold แสง
+        brightness = float(np.mean(gray))  # ✅ cast เป็น float ปกติ
+        light_ok = bool(brightness > 60)   # ✅ cast เป็น bool ปกติ
 
         if not face_ok:
-            print(f"[DEBUG] No face detected | brightness={brightness:.1f}")
-            return {"pose": "none", "face_ok": False, "light_ok": light_ok}
+            print(f"[DEBUG] ❌ No face detected | brightness={brightness:.1f}")
+            return {
+                "pose": "none",
+                "face_ok": False,
+                "light_ok": light_ok,
+                "brightness": brightness
+            }
 
         # ถ้ามีใบหน้า
         face = max(faces, key=lambda x: x.det_score)
@@ -77,20 +82,22 @@ async def analyze_pose(file: UploadFile = File(...)):
 
         # วิเคราะห์มุม
         pose_data = infer_pose_from_image(face_crop)
-        pose_label = classify_pose(pose_data["yaw"], pose_data["pitch"])
+        pose_label = classify_pose(float(pose_data["yaw"]), float(pose_data["pitch"]))
 
-        print(f"[DEBUG] Pose=({pose_label}), yaw={pose_data['yaw']:.2f}, pitch={pose_data['pitch']:.2f}, "
+        print(f"[DEBUG] ✅ Pose={pose_label}, yaw={pose_data['yaw']:.2f}, pitch={pose_data['pitch']:.2f}, "
               f"brightness={brightness:.1f}, faces={len(faces)}")
 
         return {
-            "pose": pose_label,
-            "face_ok": True,
-            "light_ok": light_ok,
-            "yaw": pose_data["yaw"],
-            "pitch": pose_data["pitch"],
+            "pose": str(pose_label),
+            "face_ok": bool(face_ok),
+            "light_ok": bool(light_ok),
+            "yaw": float(pose_data["yaw"]),
+            "pitch": float(pose_data["pitch"]),
+            "brightness": float(brightness)
         }
 
     except Exception as e:
+        print(f"[ERROR] {e}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         await file.close()
