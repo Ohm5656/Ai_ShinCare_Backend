@@ -15,7 +15,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && ln -snf /usr/share/zoneinfo/Asia/Bangkok /etc/localtime && echo Asia/Bangkok > /etc/timezone \
  && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --upgrade pip && pip install --prefer-binary --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip && pip install --no-cache-dir insightface==0.7.3 && pip install --prefer-binary --no-cache-dir -r requirements.txt
+
 
 COPY . .
 
