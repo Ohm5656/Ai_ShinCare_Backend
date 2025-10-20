@@ -1,24 +1,22 @@
 from fastapi import APIRouter, File, UploadFile, HTTPException
+from typing import List
 from insightface.app import FaceAnalysis
-import cv2, numpy as np, math, os
-
-# 🔹 Import service 3DDFA_V2 ที่โอห์มสร้างไว้
+import cv2, numpy as np
 from app.services.face_pose import infer_pose_from_image, classify_pose
 
 router = APIRouter(prefix="/analyze", tags=["Analyze"])
 
-# ======================================
-# โหลดโมเดล InsightFace (สำหรับตรวจจับใบหน้า)
-# ======================================
-app_insight = FaceAnalysis(name="buffalo_l", providers=["CPUExecutionProvider"])
-app_insight.prepare(ctx_id=0, det_size=(640, 640))
+# ===================================================
+# โหลดโมเดล InsightFace สำหรับตรวจจับใบหน้า
+# ===================================================
+face_app = FaceAnalysis(name="buffalo_l")
+face_app.prepare(ctx_id=0, det_size=(640, 640))
 
 
-# ======================================
-# ฟังก์ชันย่อย (วิเคราะห์ผิว)
-# ======================================
+# ===================================================
+# Helper: วิเคราะห์คุณภาพผิวจากใบหน้าที่ครอปมา
+# ===================================================
 def analyze_skin(face_crop):
-    """วิเคราะห์พารามิเตอร์ผิวหน้า 6 ด้าน"""
     gray = cv2.cvtColor(face_crop, cv2.COLOR_BGR2GRAY)
     wrinkle = np.clip(np.std(cv2.Laplacian(gray, cv2.CV_64F)) / 80, 0, 1)
 
@@ -46,115 +44,67 @@ def analyze_skin(face_crop):
     }
 
 
-def describe_skin(name, score):
-    """ตีความค่าตัวเลขเป็นข้อความภาษาไทย"""
-    s = score * 100
-    if name == "สิว":
-        if s < 30:
-            return "ผิวสะอาด ไม่มีสิว"
-        elif s < 60:
-            return "มีสิวเล็กน้อย"
-        else:
-            return "มีสิวชัดเจน ควรลดความมัน"
-    elif name == "ริ้วรอย":
-        if s < 30:
-            return "ผิวเรียบเนียน"
-        elif s < 60:
-            return "ริ้วรอยเล็กน้อย"
-        else:
-            return "ริ้วรอยชัด ควรบำรุง"
-    elif name == "ความมัน":
-        if s < 30:
-            return "ผิวสมดุล"
-        elif s < 60:
-            return "ค่อนข้างมัน"
-        else:
-            return "ผิวมันมาก"
-    elif name == "รอยแดง":
-        if s < 30:
-            return "ผิวปกติ"
-        elif s < 60:
-            return "รอยแดงเล็กน้อย"
-        else:
-            return "รอยแดงชัด"
-    elif name == "สีผิว":
-        if s < 30:
-            return "สีผิวสม่ำเสมอ"
-        elif s < 60:
-            return "สีผิวเริ่มไม่สม่ำเสมอ"
-        else:
-            return "สีผิวหมองคล้ำ"
-    elif name == "ใต้ตา":
-        if s < 30:
-            return "ใต้ตาสดใส"
-        elif s < 60:
-            return "คล้ำเล็กน้อย"
-        else:
-            return "คล้ำมาก"
-    return "ปกติ"
-
-
-# ======================================
-# Endpoint วิเคราะห์ผิว + มุมใบหน้า
-# ======================================
-@router.post("/skin")
-async def analyze_skin_api(file: UploadFile = File(...)):
-    """
-    📷 รับภาพใบหน้า → ตรวจจับใบหน้า → วิเคราะห์ผิว + มุมใบหน้า (3DDFA_V2)
-    """
+# ===================================================
+# ✅ วิเคราะห์ “มุมใบหน้า” จากรูปเดียว (ใช้ใน Loop)
+# ===================================================
+@router.post("/pose")
+async def analyze_pose(file: UploadFile = File(...)):
     try:
-        # อ่านข้อมูลภาพ
         contents = await file.read()
         nparr = np.frombuffer(contents, np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
         if img is None:
             raise HTTPException(status_code=400, detail="ไม่สามารถอ่านภาพได้")
 
-        # ----------------------------------------
-        # 🔹 ตรวจจับใบหน้าด้วย InsightFace
-        # ----------------------------------------
-        faces = app_insight.get(img)
+        # ตรวจจับใบหน้า
+        faces = face_app.get(img)
         if not faces:
-            return {"ok": False, "message": "ไม่พบใบหน้าในภาพ"}
+            return {"pose": "none"}
 
-        # ใช้ใบหน้าที่มั่นใจที่สุด
         face = max(faces, key=lambda x: x.det_score)
         x1, y1, x2, y2 = map(int, face.bbox)
         face_crop = img[y1:y2, x1:x2]
 
-        # ----------------------------------------
-        # 🔹 วิเคราะห์ผิว (6 พารามิเตอร์)
-        # ----------------------------------------
-        results = analyze_skin(face_crop)
-        descriptions = {k: describe_skin(k, v) for k, v in results.items()}
-
-        # ----------------------------------------
-        # 🔹 วิเคราะห์มุมใบหน้าด้วย 3DDFA_V2 (ONNX)
-        # ----------------------------------------
+        # วิเคราะห์มุม
         pose_data = infer_pose_from_image(face_crop)
-        pose_label = pose_data.get("label", "unknown")
+        pose_label = classify_pose(pose_data["yaw"], pose_data["pitch"])
 
-        # รวมผลลัพธ์ทั้งหมด
-        summary_text = (
-            "สรุปผลเบื้องต้น: ผิวโดยรวมอยู่ในเกณฑ์ดี "
-            "ควรรักษาความชุ่มชื้นและทาครีมกันแดดสม่ำเสมอ"
-        )
+        print(f"[DEBUG] Pose={pose_label}, yaw={pose_data['yaw']:.2f}, pitch={pose_data['pitch']:.2f}")
+        return {"pose": pose_label}
 
-        return {
-            "ok": True,
-            "pose": {
-                "yaw": pose_data["yaw"],
-                "pitch": pose_data["pitch"],
-                "roll": pose_data["roll"],
-                "label": pose_label
-            },
-            "results": results,
-            "descriptions": descriptions,
-            "summary": summary_text,
-        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        await file.close()
+
+
+# ===================================================
+# ✅ วิเคราะห์ “ผิวหน้า” จากภาพทั้ง 3 มุม
+# ===================================================
+@router.post("/skin")
+async def analyze_skin_api(files: List[UploadFile] = File(...)):
+    try:
+        if len(files) < 3:
+            raise HTTPException(status_code=400, detail="ต้องส่งภาพ 3 มุม (front, left, right)")
+
+        skin_scores = []
+
+        for file in files:
+            contents = await file.read()
+            img = cv2.imdecode(np.frombuffer(contents, np.uint8), cv2.IMREAD_COLOR)
+            faces = face_app.get(img)
+            if not faces:
+                continue
+
+            face = max(faces, key=lambda x: x.det_score)
+            x1, y1, x2, y2 = map(int, face.bbox)
+            face_crop = img[y1:y2, x1:x2]
+            skin_scores.append(analyze_skin(face_crop))
+
+        # รวมค่าเฉลี่ย
+        avg = {k: float(np.mean([d[k] for d in skin_scores])) for k in skin_scores[0]}
+
+        return {"ok": True, "results": avg, "message": "วิเคราะห์ผิวสำเร็จ"}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"การวิเคราะห์ล้มเหลว: {e}")
-    finally:
-        await file.close()
