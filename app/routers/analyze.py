@@ -51,21 +51,31 @@ def analyze_skin(face_crop):
 @router.post("/pose")
 async def analyze_pose(file: UploadFile = File(...)):
     try:
+        # -----------------------------
+        # โหลดภาพจาก frontend
+        # -----------------------------
         contents = await file.read()
         nparr = np.frombuffer(contents, np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         if img is None:
             raise HTTPException(status_code=400, detail="ไม่สามารถอ่านภาพได้")
 
+        # -----------------------------
         # ตรวจจับใบหน้า
+        # -----------------------------
         faces = face_app.get(img)
         face_ok = len(faces) > 0
 
-        # ตรวจแสง
+        # -----------------------------
+        # ตรวจวัดความสว่าง
+        # -----------------------------
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         brightness = float(np.mean(gray))  # ✅ cast เป็น float ปกติ
         light_ok = bool(brightness > 60)   # ✅ cast เป็น bool ปกติ
 
+        # -----------------------------
+        # ถ้าไม่พบใบหน้า
+        # -----------------------------
         if not face_ok:
             print(f"[DEBUG] ❌ No face detected | brightness={brightness:.1f}")
             return {
@@ -75,25 +85,29 @@ async def analyze_pose(file: UploadFile = File(...)):
                 "brightness": brightness
             }
 
-        # ถ้ามีใบหน้า
+        # -----------------------------
+        # ถ้ามีใบหน้า → วิเคราะห์มุม
+        # -----------------------------
         face = max(faces, key=lambda x: x.det_score)
         x1, y1, x2, y2 = map(int, face.bbox)
         face_crop = img[y1:y2, x1:x2]
 
-        # วิเคราะห์มุม
         pose_data = infer_pose_from_image(face_crop)
-        pose_label = classify_pose(float(pose_data["yaw"]), float(pose_data["pitch"]))
+        pose_label = str(classify_pose(float(pose_data["yaw"]), float(pose_data["pitch"])))  # ✅ force เป็น string
 
         print(f"[DEBUG] ✅ Pose={pose_label}, yaw={pose_data['yaw']:.2f}, pitch={pose_data['pitch']:.2f}, "
               f"brightness={brightness:.1f}, faces={len(faces)}")
 
+        # -----------------------------
+        # ส่งผลกลับไป frontend
+        # -----------------------------
         return {
-            "pose": str(pose_label),
-            "face_ok": bool(face_ok),
-            "light_ok": bool(light_ok),
+            "pose": pose_label,
+            "face_ok": True,
+            "light_ok": light_ok,
             "yaw": float(pose_data["yaw"]),
             "pitch": float(pose_data["pitch"]),
-            "brightness": float(brightness)
+            "brightness": brightness
         }
 
     except Exception as e:
