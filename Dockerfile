@@ -1,54 +1,28 @@
-# =========================================================
-# 1) Base image
-# =========================================================
 FROM python:3.10-slim
 
-# =========================================================
-# 2) Working directory
-# =========================================================
 WORKDIR /app
 
-# =========================================================
-# 3) Copy requirements first
-# =========================================================
 COPY requirements.txt .
 
-# =========================================================
-# 4) Install system dependencies
-# =========================================================
+# === ติดตั้ง tools สำหรับ build insightface + runtime libs ===
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential g++ make \
     libgl1 libglib2.0-0 libsm6 libxrender1 libxext6 tzdata \
     && ln -snf /usr/share/zoneinfo/Asia/Bangkok /etc/localtime && echo Asia/Bangkok > /etc/timezone \
     && rm -rf /var/lib/apt/lists/*
 
-# =========================================================
-# 5) Install Python dependencies
-# =========================================================
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir --force-reinstall -r requirements.txt
 
-# =========================================================
-# 6) Copy all application source code
-# =========================================================
 COPY . .
 
-# =========================================================
-# 7) Environment Variables
-# =========================================================
 ENV STORAGE_DIR=/data/uploads \
     INSIGHTFACE_PROVIDER=CPUExecutionProvider \
     DETECT_SIZE=640 \
     PYTHONUNBUFFERED=1 \
     PORT=8000
 
-# =========================================================
-# 8) Create directories
-# =========================================================
 RUN mkdir -p /data/uploads
 
-# =========================================================
-# 9) Run API
-# =========================================================
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

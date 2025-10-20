@@ -10,19 +10,19 @@ SQLAlchemy
 psycopg2-binary
 alembic
 
-# === Authentication & Security ===
+# === Auth & Security ===
 passlib[bcrypt]
 python-jose[cryptography]
 bcrypt
 python-dotenv
 
-# === Logging / Rate limit ===
+# === Logging ===
 loguru
 slowapi
 
-# === AI / CV dependencies ===
+# === AI / CV ===
 opencv-python-headless==4.10.0.84
-numpy
+numpy==1.26.4
 onnxruntime==1.17.3
 insightface==0.7.3
 
