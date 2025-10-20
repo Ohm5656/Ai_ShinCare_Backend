@@ -23,7 +23,7 @@ slowapi
 # === AI / CV dependencies ===
 opencv-python
 numpy
-insightface
+insightface==0.7.3
 onnxruntime
 
 # === Utils ===
