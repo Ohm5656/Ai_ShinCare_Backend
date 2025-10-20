@@ -29,3 +29,5 @@ insightface==0.7.3
 # === Utils ===
 requests
 email-validator
+pandas==2.2.3
+
