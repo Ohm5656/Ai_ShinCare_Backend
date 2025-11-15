@@ -1,6 +1,6 @@
 # ============================================
 # GlowbieBell – AI Skin Analyzer Backend
-# Railway Build with Model ZIP Extraction
+# Correct Railway Build (NO ZIP, DIRECT MODEL COPY)
 # ============================================
 
 FROM python:3.10-slim
@@ -13,8 +13,8 @@ RUN apt-get update && apt-get install -y \
     libglib2.0-0 \
     git \
     g++ \
-    unzip \
     build-essential \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # ---------------------
@@ -34,20 +34,14 @@ RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
 # ---------------------
-# 5) Copy application source code
+# 5) Copy ALL source code (including models/)
 # ---------------------
 COPY . .
 
 # ---------------------
-# 6) Extract model ZIP files from /models_zip
+# 6) Ensure models directory exists
 # ---------------------
-
 RUN mkdir -p /app/models
-
-RUN for f in /app/models/*.zip; do \
-        echo "Extracting $f ..."; \
-        unzip -o "$f" -d /app/models/; \
-    done
 
 # ---------------------
 # 7) Environment Variables
@@ -60,12 +54,12 @@ ENV STORAGE_DIR=/data/uploads \
     PORT=8000
 
 # ---------------------
-# 8) Create upload directory
+# 8) Create upload directory (for railway volume)
 # ---------------------
 RUN mkdir -p /data/uploads
 
 # ---------------------
-# 9) Expose and Run
+# 9) Expose + Run
 # ---------------------
 EXPOSE 8000
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
