@@ -37,24 +37,37 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_API_URL = "https://api.openai.com/v1/chat/completions"
 
 print("✅ DEBUG: Loaded OPENAI_API_KEY =", OPENAI_API_KEY[:10] + "..." if OPENAI_API_KEY else "❌ None")
+# ===================================================================================
+# 🔹 DEBUG: CHECK MODEL FILES ON RAILWAY
+# ===================================================================================
+print("===== DEBUG: LIST MODELS FOLDER =====")
+for root, dirs, files in os.walk("models"):
+    print(root, files)
+print("======================================")
+
 
 # ===================================================================================
 # 🔹 ตั้งค่า FastAPI App + CORS
 # ===================================================================================
 app = FastAPI(title="GlowbieBell Backend", version="2.0.0")
+from routers.history_router import router as history_router
+from routers.scan_router import router as scan_router
+
+app.include_router(history_router)
+app.include_router(scan_router)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://aishincarefrontend-production.up.railway.app",
         "http://localhost:5173",
-        "http://localhost:3000",
-        "*"
+        "http://localhost:3000"
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # ===================================================================================
 # 🔹 หน้าแรก
@@ -289,32 +302,70 @@ async def analyze_face_full(payload: FaceAnalyzePayload):
         except Exception:
             highlights_short, improvements_short = [], []
 
-        # ---------- 7) ส่งกลับ Frontend ----------
+        # ------------------------------
+        #  SAVE SCAN HISTORY (REAL DATA)
+        # ------------------------------
+        from routers.scan_router import save_scan
+        from database import SessionLocal
+
+        db = SessionLocal()
+        try:
+            save_scan(
+                {
+                    "overall_score": result["overall_score"],
+                    "dimension_scores": result["dimension_scores"],
+                    "profile": {
+                        "sex": sex,
+                        "age_range": age_range,
+                        "skin_type": skin_type,
+                        "sensitive": sensitive,
+                        "concerns": concerns,
+                    },
+                    "top_issue": max(result["dimension_scores"], key=result["dimension_scores"].get),
+                    "improvement": 0
+                },
+                db
+            )
+        finally:
+            db.close()
+
+        # ------------------------------
+        # RETURN ต้องอยู่นอก finally!!
+        # ------------------------------
         return {
             "overall_score": result["overall_score"],
             "dimension_scores": result["dimension_scores"],
             "weighted_contrib": result["weighted_contrib"],
             "mode": result["mode"],
 
-            # เพิ่มของใหม่
             "highlights_short": highlights_short,
             "improvements_short": improvements_short,
-            "ai_advice": ai_advice_long,              # เก็บไว้ใช้ตอนเปิดหน้าแชท
-            "profile": {                               # echo โปรไฟล์ที่ user กรอก
+            "ai_advice": ai_advice_long,
+
+            "profile": {
                 "sex": sex,
                 "age_range": age_range,
                 "skin_type": skin_type,
                 "sensitive": bool(sensitive),
                 "concerns": concerns,
-            }
+            },
+
+            "top_issue": max(result["dimension_scores"], key=result["dimension_scores"].get),
+            "improvement": 0
         }
+
+
+
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"❌ Internal error: {e}")
-
+# ==================================================
 # ===================================================================================
 # 🔹 Local run
 # ===================================================================================
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+
+    # ถ้าใช้ ngrok → เริ่ม server ตามปกติ
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
+
