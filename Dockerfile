@@ -44,7 +44,7 @@ COPY . .
 
 RUN mkdir -p /app/models
 
-RUN for f in /app/models_zip/*.zip; do \
+RUN for f in /app/models/*.zip; do \
         echo "Extracting $f ..."; \
         unzip -o "$f" -d /app/models/; \
     done
