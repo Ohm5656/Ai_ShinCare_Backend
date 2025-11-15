@@ -105,7 +105,7 @@ Perfect for result screens:
   "highlights_short": ["Skin texture is smooth", "Hydration is good"],
   "improvements_short": ["Slight redness detected", "Uneven tone in cheek area"]
 }
-
+```
 
 🧩 System Architecture
 User (Frontend)
@@ -220,4 +220,5 @@ Personalized skincare product matching
 👤 Author
 
 Natdanai Lunaha(Ohm)
+
 GlowbieBell – Advanced Skin AI Platform
