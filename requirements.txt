@@ -1,21 +1,40 @@
-fastapi
-uvicorn[standard]
-python-multipart
-pydantic
-pydantic-settings
+# ===================================================================================
+# 🩺 GlowbieBell AI Skincare Backend (Railway Production Requirements)
+# ===================================================================================
 
-SQLAlchemy
-psycopg2-binary
-alembic
+# --- Core backend ---
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+python-dotenv==1.0.1
+requests==2.32.3
+Pillow==10.4.0
+numpy==1.26.4
 
-passlib[bcrypt]
-python-jose[cryptography]
-bcrypt
+# --- OpenCV (ใช้ headless สำหรับ Server / Railway) ---
+opencv-python-headless==4.10.0.84
 
-loguru
-slowapi
+# --- ML / AI Core ---
+# Linux/Server (Railway) → ใช้ torch CPU เวอร์ชันนี้เท่านั้น
+torch==2.1.2+cpu
+torchvision==0.16.2+cpu
+torchaudio==2.1.2+cpu
+-f https://download.pytorch.org/whl/cpu/torch_stable.html
 
-opencv-python
-numpy
-insightface
-onnxruntime
+# --- Mediapipe (ใช้ประกอบ sagging analyzer / face mesh feature) ---
+mediapipe==0.10.14
+
+# --- HuggingFace / Transformers ---
+transformers==4.44.2
+huggingface-hub==0.24.6
+safetensors==0.4.4
+
+# --- ONNX runtime (สำหรับ wrinkles/unet/texture model) ---
+onnxruntime==1.18.0
+onnx==1.16.0
+
+# --- Vision / image filters ---
+scikit-image==0.24.0
+
+# --- Utilities ---
+tqdm==4.66.5
