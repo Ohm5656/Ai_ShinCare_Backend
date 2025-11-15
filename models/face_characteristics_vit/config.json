@@ -1,3 +1,43 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:dd1cc3f8eed85093e7e3f7463ee61e76a5a9b08a929f0edcb1a9e245ab735c01
-size 998
+{
+  "architectures": [
+    "ViTForImageClassification"
+  ],
+  "attention_probs_dropout_prob": 0.0,
+  "dtype": "float32",
+  "encoder_stride": 16,
+  "hidden_act": "gelu",
+  "hidden_dropout_prob": 0.0,
+  "hidden_size": 768,
+  "id2label": {
+    "0": "acne",
+    "1": "eyes dark circles",
+    "2": "puffy eyes",
+    "3": "skin pigmentation",
+    "4": "skin redness",
+    "5": "skin texture",
+    "6": "wrinkled face"
+  },
+  "image_size": 224,
+  "initializer_range": 0.02,
+  "intermediate_size": 3072,
+  "label2id": {
+    "acne": "0",
+    "eyes dark circles": "1",
+    "puffy eyes": "2",
+    "skin pigmentation": "3",
+    "skin redness": "4",
+    "skin texture": "5",
+    "wrinkled face": "6"
+  },
+  "layer_norm_eps": 1e-12,
+  "model_type": "vit",
+  "num_attention_heads": 12,
+  "num_channels": 3,
+  "num_hidden_layers": 12,
+  "patch_size": 16,
+  "pooler_act": "tanh",
+  "pooler_output_size": 768,
+  "problem_type": "single_label_classification",
+  "qkv_bias": true,
+  "transformers_version": "4.57.1"
+}
