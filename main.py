@@ -109,7 +109,14 @@ async def ask_ai(request: PromptRequest):
     if response.status_code != 200:
         raise HTTPException(status_code=response.status_code, detail=response.text)
 
-    return {"answer": response.json()["choices"][0]["message"]["content"]}
+    resp = response.json()
+    try:
+        content = resp["choices"][0]["message"]["content"]
+    except:
+        content = resp["choices"][0].get("text", "")
+
+    return {"answer": content}
+
 
 # ===================================================================================
 # 🔹 Model จาก FE
