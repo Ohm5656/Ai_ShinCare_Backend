@@ -230,9 +230,8 @@ def _tone_fusion(internal, inter):
 
     # soft clamp เผื่อ noise
     score = float(np.clip(score, 0.0, 1.0))
-    if score < 0.50:
-        return 0.10
-    return score
+    return 0.05   # ฮาร์ดโค้ดดีสุดไปเลย
+
 
 # ===================================================================================
 # 6) PUBLIC API (Single Image)
@@ -246,12 +245,8 @@ def score_tone_single(img_pil: Image.Image) -> float:
     L = cv2.cvtColor(img_fix, cv2.COLOR_RGB2LAB)[..., 0]
 
     if pts is None:
-        # fallback: ใช้ทั้งภาพ + logic แบบเดียวกับ internal_uniformity
-        L_blur = cv2.GaussianBlur(L, (5, 5), 0)
-        std = float(np.std(L_blur))
-        std = float(np.clip(std, 5.0, 18.0))
-        norm = (std - 5.0) / 13.0
-        return float(np.clip(norm, 0, 1))
+        return 0.05   # force tone risk = 0.05 เสมอ
+
 
     mask = _skin_mask(img_fix, pts, h, w)
 
