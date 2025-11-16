@@ -308,6 +308,7 @@ async def analyze_face_full(payload: FaceAnalyzePayload):
             "improvements_short": short.get("improvements_short", []),
 
             "ai_advice": ai_advice_long,
+            "long_prompt": long_prompt,   # ⭐ เพิ่มตรงนี้สำคัญมาก
 
             "profile": {
                 "sex": sex,
@@ -320,7 +321,6 @@ async def analyze_face_full(payload: FaceAnalyzePayload):
             "top_issue": max(result["dimension_scores"], key=result["dimension_scores"].get),
             "improvement": 0
         }
-
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"❌ Internal error: {e}")
