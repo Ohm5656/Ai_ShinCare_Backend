@@ -81,24 +81,38 @@ async def root():
 # ===================================================================================
 class PromptRequest(BaseModel):
     prompt: str
+    profile: dict | None = None
+    scores: dict | None = None
+
 
 @app.post("/ask-ai")
 async def ask_ai(request: PromptRequest):
     if not OPENAI_API_KEY:
         raise HTTPException(status_code=500, detail="Missing OPENAI_API_KEY")
 
-    system_prompt = """
+    system_prompt = f"""
         คุณคือ Dr.SkinAI ผู้เชี่ยวชาญด้านผิวหนังและสกินแคร์สำหรับคนเอเชีย
-        ตอบเป็นภาษาไทย ชัดเจน เป็นกันเอง และให้คำแนะนำแบบปรับตามสภาพผิว
-        หลีกเลี่ยงการวินิจฉัยโรคแบบแทนแพทย์ ให้เน้นการดูแลผิวทั่วไปและการไปพบแพทย์เมื่อจำเป็น
-    """
+        คุณจะได้รับ:
+        - โปรไฟล์ผู้ใช้ (อายุ เพศ ประเภทผิว แพ้ง่าย ความกังวล)
+        - คะแนนผิว 7 มิติจากการสแกนล่าสุด
+
+        จงตอบโดยใช้ข้อมูลเหล่านี้ร่วมด้วย
+        ห้ามวินิจฉัยโรค แต่ให้คำแนะนำด้านการดูแลผิวอย่างปลอดภัย
+        ตอบด้วยภาษาไทย สุภาพ อธิบายง่าย และเฉพาะบุคคล ถ้าอาการหนักผู้ใช้ควรพบแพทย์
+        """
+
 
     data = {
         "model": "gpt-4o",
         "messages": [
             {"role": "system", "content": system_prompt},
+            {
+                "role": "assistant",
+                "content": f"ข้อมูลผู้ใช้ล่าสุด:\nโปรไฟล์: {request.profile}\nคะแนนผิว: {request.scores}"
+            },
             {"role": "user", "content": request.prompt},
         ],
+
         "temperature": 0.7,
         "max_tokens": 500,
     }
