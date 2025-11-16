@@ -230,8 +230,8 @@ def _tone_fusion(internal, inter):
 
     # soft clamp เผื่อ noise
     score = float(np.clip(score, 0.0, 1.0))
-    if score < 0.95:
-        return 0.95
+    if score < 0.50:
+        return 0.10
     return score
 
 # ===================================================================================
